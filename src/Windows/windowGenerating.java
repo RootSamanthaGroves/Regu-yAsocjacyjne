@@ -52,20 +52,16 @@ public class windowGenerating extends javax.swing.JFrame {
             throws Exception {
         Instances data = loadData("./src/date/osmolski.arff");
 
-        for (int i = 0; i < data.numInstances(); i++) //Przegladanie obiektow
-        {
+        for (int i = 0; i < data.numInstances(); i++) { //Przegladanie obiektow
             System.out.println("Wiersz numer " + i + ":");
-
             Instance instance = data.instance(i); //Pobranie obiektu (wiersza danych) o podanym numerze
 
-            for (int j = 0; j < instance.numAttributes(); j++) //Przegladanie atrybutow w obiekcie
-            {
+            for (int j = 0; j < instance.numAttributes(); j++) { //Przegladanie atrybutow w obiekcie
                 String textValue = instance.toString(j); //Pobranie wartosci atrybutu o podanym numerze (tzn. pobranie tekstowej reprezentacji wartosci)
                 System.out.print(textValue + ", ");
             }
             System.out.println();
         }
-
     }
 
     /**
@@ -179,16 +175,28 @@ public class windowGenerating extends javax.swing.JFrame {
         } catch (Exception ex) {
             Logger.getLogger(windowWEKA.class.getName()).log(Level.SEVERE, null, ex);
         }
-        WekaApriori wa = windowWEKA.getwA();
-        String[] acceptRules = wa.checkAllRules(newData);
-        rulesWichSupportObject = acceptRules;
-        taResults.setText(wa.rulesAsString());
-        loadDataToTable(acceptRules);
 
+        String header[] = new String[newData.numAttributes()];
+        for (int i = 0; i < header.length; i++) {
+            header[i] = newData.attribute(i).name();
+        }
+
+        String[][] newDataInTable = dataFromInnstancesToTable(newData);
+        WekaApriori wa = windowWEKA.getwA();
+        String[] acceptRules = wa.checkAllRules(header, newDataInTable);
+
+        rulesWichSupportObject = acceptRules;
+
+        String[] contradictoryTheRules = wa.checkContradictoryTheRules(header, newDataInTable, acceptRules);  //tworzenie kolumny w tabele TEŻ ZMIENIC
+
+        taResults.setText(wa.rulesAsString());
+
+        loadDataToTable(newDataInTable, acceptRules, contradictoryTheRules);
     }//GEN-LAST:event_btnShowNewDataActionPerformed
 
     private void btnSaveResultsActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSaveResultsActionPerformed
         StringBuilder sb = new StringBuilder();
+
         for (String tabHeader : tabHeaders) {
             sb.append(tabHeader).append("; ");
         }
@@ -199,6 +207,7 @@ public class windowGenerating extends javax.swing.JFrame {
                 sb.append(newDataToTable[i][j]).append("; ");
             }
             sb.append(rulesWichSupportObject[i]).append("\n");
+
         }
         try {
             PrintWriter pw = new PrintWriter(new FileOutputStream(
@@ -208,6 +217,7 @@ public class windowGenerating extends javax.swing.JFrame {
             JOptionPane.showMessageDialog(null, "Saved successfully", "Saved", 1);
         } catch (FileNotFoundException | HeadlessException e) {
             JOptionPane.showMessageDialog(null, e, "Saved abord", 0);
+
         }
     }//GEN-LAST:event_btnSaveResultsActionPerformed
 
@@ -259,33 +269,39 @@ public class windowGenerating extends javax.swing.JFrame {
     // End of variables declaration//GEN-END:variables
 
     /**
-     * Metoda powinna uzupełniać tabelkę danymi wczytanymi z pliku *.arff
      *
+     *
+     * @param dataInTable
      * @param acceptRules
+     * @param contradictoryTheRules
      */
-    public void loadDataToTable(String[] acceptRules) {
+    public void loadDataToTable(String[][] dataInTable, String[] acceptRules, String[] contradictoryTheRules) {
         try {
             int numberRow = numOfNewInstance;
-            int numberColumn = newData.numAttributes() + 1;
+            int numberColumn = newData.numAttributes() + 2;
             jTabData = new JTable(numberRow, numberColumn);
 
             DefaultTableModel dtm = new DefaultTableModel(0, 0);
             String header[] = new String[numberColumn];
-            for (int i = 0; i < numberColumn - 1; i++) {
+            for (int i = 0; i < numberColumn - 2; i++) {
                 header[i] = newData.attribute(i).name();
                 LIST_OF_HEADER.add(header[i]);
             }
-            header[numberColumn - 1] = "Supports rules";
+            header[numberColumn - 2] = "Supports rules";
+            header[numberColumn - 1] = "Contradictory the rules";
             tabHeaders = header;
             dtm.setColumnIdentifiers(header);
             jTabData.setModel(dtm);
+
             List<String[]> listWithInstance = new ArrayList<>();
-            for (int i = 0; i < newData.numInstances(); i++) {
+            for (int i = 0; i < dataInTable.length; i++) {////poprawić
                 Instance instance = newData.instance(i);
-                String[] row = new String[instance.numAttributes() + 1];
+                String[] row = new String[instance.numAttributes() + 2];
                 String[] row2 = instance.toString().split(Pattern.quote(","));
                 System.arraycopy(row2, 0, row, 0, row2.length);
-                row[row.length - 1] = acceptRules[i];
+                row[row.length - 1] = contradictoryTheRules[i];
+
+                row[row.length - 2] = acceptRules[i];
 
                 listWithInstance.add(row);
             }

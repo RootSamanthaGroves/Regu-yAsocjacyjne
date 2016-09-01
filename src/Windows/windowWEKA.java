@@ -249,7 +249,7 @@ public class windowWEKA extends javax.swing.JFrame {
 
         try {
             wA = new WekaApriori();
-            word = wA.regulyAsocjacyjne(data, tfNumberRules.getText(), tfMinCon.getText());
+            word = wA.rulesAssociativ(data, tfNumberRules.getText(), tfMinCon.getText());
             taResults.setText(word);
         } catch (Exception ex) {
             Logger.getLogger(windowWEKA.class.getName()).log(Level.SEVERE, null, ex);

@@ -62,7 +62,7 @@ public class WekaApriori {
      * @return
      * @throws Exception
      */
-    public String regulyAsocjacyjne(Instances data, String c, String n)
+    public String rulesAssociativ(Instances data, String c, String n)
             throws Exception {
         data.setClassIndex(data.numAttributes() - 1);
 
@@ -82,32 +82,44 @@ public class WekaApriori {
      * regule na premise i consequence i sprawdza czy następniki i poprzedniki
      * reguły mają takie same wartości w sprawdzanym obiekcie
      *
+     * @param attribName tablica z nazwami atrybutów
      * @param associationRule reguła do sprawdzenia
      * @param instances zbiór obiektów danych
      * @param numRule numer sprawdzanej reguły
      * @return tablica jednowymiarowa z wartościami typu String przechwującymi
      * numery wspieranych przez obiekt reguł
      */
-    public static String[] ruleCheck(AssociationRule associationRule, Instances instances, int numRule) {
-        String[] tabCompatibility = new String[instances.numInstances()];
+    public static String[] ruleCheck(String[] attribName, AssociationRule associationRule, String[][] instances, int numRule) {
+        String[] tabCompatibility = new String[instances.length];
         for (int j = 0; j < tabCompatibility.length; j++) {
             tabCompatibility[j] = " ";
         }
 
         Collection<Item> premise = associationRule.getPremise();
         Collection<Item> consequence = associationRule.getConsequence();
-        for (int i = 0; i < instances.numInstances(); i++) {// przechodzi po salej tablicy danych 
-
+        for (int i = 0; i < instances.length; i++) {// przechodzi po calej tablicy danych 
             for (Item item : premise) {
-                String instValueOnAtrrib = instances.get(i).stringValue(item.getAttribute());
+                int index = 0;
+                for (int j = 0; j < attribName.length; j++) {
+                    if (item.getAttribute().name().equals(attribName[j])) {
+                        index = j;
+                    }
+                }
+                String instValueOnAtrrib = instances[i][index];
                 if (!instValueOnAtrrib.equals(item.getItemValueAsString())) {// przyrownanie czy czesc z regulu jest spełniona z wartoscia z kolumny
                     tabCompatibility[i] = "niezgodny";
                     break;
                 }
             }
             for (Item item : consequence) {
-                String instValueOnAtrrib = instances.get(i).stringValue(item.getAttribute());
-                if (instValueOnAtrrib.equals(item.getItemValueAsString()) && !tabCompatibility[i].equals("niezgodny")) {
+                int index = 0;
+                for (int j = 0; j < attribName.length; j++) {
+                    if (item.getAttribute().name().equals(attribName[j])) {
+                        index = j;
+                    }
+                }
+                String instValueOnAtrrib = instances[i][index];
+                if (/*instValueOnAtrrib.equals(item.getItemValueAsString()) &&*/!tabCompatibility[i].equals("niezgodny")) {
                     tabCompatibility[i] = (numRule + 1) + "";
                 } else {
                     tabCompatibility[i] = "niezgodny";
@@ -119,19 +131,70 @@ public class WekaApriori {
 
     /**
      *
+     * @param attribName
+     * @param associationRule
      * @param instances
+     * @param numRule
+     * @param acceptRules
      * @return
      */
-    public String[] checkAllRules(Instances instances) {
+    public static String[] ruleCheckContradictory(String[] attribName, AssociationRule associationRule, String[][] instances, int numRule, String[] acceptRules) {
+        String[] tabCompatibility = new String[instances.length];
+        for (int j = 0; j < tabCompatibility.length; j++) {
+            tabCompatibility[j] = " ";
+        }
+
+        Collection<Item> premise = associationRule.getPremise();
+        Collection<Item> consequence = associationRule.getConsequence();
+        for (int i = 0; i < instances.length; i++) {// przechodzi po calej tablicy danych 
+            for (Item item : premise) {
+                int index = 0;
+                for (int j = 0; j < attribName.length; j++) {
+                    if (item.getAttribute().name().equals(attribName[j])) {
+                        index = j;
+                    }
+                }
+                String instValueOnAtrrib = instances[i][index];
+                if (!instValueOnAtrrib.equals(item.getItemValueAsString())) {// przyrownanie czy czesc z regulu jest spełniona z wartoscia z kolumny
+                    tabCompatibility[i] = "niezgodny";
+                }
+            }
+            for (Item item : consequence) {
+                int index = 0;
+                for (int j = 0; j < attribName.length; j++) {
+                    if (item.getAttribute().name().equals(attribName[j])) {
+                        index = j;
+                    }
+                }
+                String instValueOnAtrrib = instances[i][index];
+                int newNum = numRule + 1;
+                if (instValueOnAtrrib.equals(item.getItemValueAsString()) && !tabCompatibility[i].equals("niezgodny")) {
+                    tabCompatibility[i] = "niezgodny";
+                } else if (acceptRules[i].contains(String.valueOf(newNum))) {
+                    tabCompatibility[i] = String.valueOf(newNum);
+                }
+            }
+        }
+        return tabCompatibility;
+    }
+
+    /**
+     *
+     * @param atrribName tablica z nazwami atrybutów
+     * @param instances obiekty danych zapisane jako dwuwymiarowa tablica
+     * stringów
+     * @return
+     */
+    public String[] checkAllRules(String[] atrribName, String[][] instances) {
         AssociationRules associationRules = apriori.getAssociationRules();
         List<AssociationRule> rules = associationRules.getRules();
         ArrayList<String[]> listOfObjCheck = new ArrayList<>();
-        String[] rulesSuportForObj = new String[instances.numInstances()];
+        String[] rulesSuportForObj = new String[instances.length];
         for (int i = 0; i < rulesSuportForObj.length; i++) {
             rulesSuportForObj[i] = " ";
         }
         for (int i = 0; i < rules.size(); i++) {
-            listOfObjCheck.add(ruleCheck(rules.get(i), instances, i));
+            listOfObjCheck.add(ruleCheck(atrribName, rules.get(i), instances, i));
         }
 
         for (int k = 0; k < listOfObjCheck.get(0).length; k++) {//6462
@@ -146,10 +209,51 @@ public class WekaApriori {
         for (int i = 0; i < rulesSuportForObj.length; i++) {
             if (rulesSuportForObj[i].length() > 1) {
                 rulesSuportForObj[i] = rulesSuportForObj[i].substring(0, rulesSuportForObj[i].length() - 2);
-               // System.out.println(rulesSuportForObj[i]);
             }
         }
         return rulesSuportForObj;
+    }
+
+    /**
+     * Metoda sprawdzajaca sprzeczność reguł z obiektami Krtan cN1 pN1
+     *
+     *
+     * PRZY_ZG=0 => WYNIKI=Brak_wznowy
+     *
+     * PRZY_ZG=0, ale WYNIKI=Inny rak, i PRZY_ZG=0, to ma być WYNIKI=Brak_wznowy
+     *
+     * @param atrribName
+     * @param instances
+     * @param acceptRules
+     * @return
+     */
+    public String[] checkContradictoryTheRules(String[] atrribName, String[][] instances, String[] acceptRules) {
+        AssociationRules associationRules = apriori.getAssociationRules();
+        List<AssociationRule> rules = associationRules.getRules();
+        ArrayList<String[]> listOfObjCheck = new ArrayList<>();
+        String[] rulesContradictoryForObj = new String[instances.length];
+        for (int i = 0; i < rulesContradictoryForObj.length; i++) {
+            rulesContradictoryForObj[i] = " ";
+        }
+        for (int i = 0; i < rules.size(); i++) {
+            listOfObjCheck.add(ruleCheckContradictory(atrribName, rules.get(i), instances, i, acceptRules));
+        }
+
+        for (int k = 0; k < listOfObjCheck.get(0).length; k++) {//6462
+            for (int i = 0; i < listOfObjCheck.size(); i++) {//10
+                if (!listOfObjCheck.get(i)[k].isEmpty()) {
+                    if (!listOfObjCheck.get(i)[k].contains("niezgodny")) {
+                        rulesContradictoryForObj[k] += listOfObjCheck.get(i)[k] + ", ";
+                    }
+                }
+            }
+        }
+        for (int i = 0; i < rulesContradictoryForObj.length; i++) {
+            if (rulesContradictoryForObj[i].length() > 1) {
+                rulesContradictoryForObj[i] = rulesContradictoryForObj[i].substring(0, rulesContradictoryForObj[i].length() - 2);
+            }
+        }
+        return rulesContradictoryForObj;
     }
 
     public String rulesAsString() {
