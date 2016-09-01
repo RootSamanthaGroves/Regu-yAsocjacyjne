@@ -53,6 +53,7 @@ public class WekaApriori {
         this.minConfidence = minConfidence;
     }
 
+    
     /**
      * Generowanie reguł Asocjacyjnych algorytmem Apriori
      *
